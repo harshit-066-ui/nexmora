@@ -1,0 +1,21 @@
+{
+  "name": "nexmora-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nexmora Chat App — Portfolio-grade real-time chat system",
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npx tsx watch src/index.ts",
+    "dev:ws": "cd websocket && npx tsx watch src/index.ts",
+    "dev-all": "concurrently -n frontend,backend,websocket -c cyan,yellow,magenta \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ws\"",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../websocket && npm install",
+    "build": "cd frontend && npm run build"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3"
+  }
+}
