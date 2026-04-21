@@ -106,18 +106,22 @@ router.get('/rooms', async (req: AuthenticatedRequest, res: Response) => {
 router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
-    const { participant_ids, name, is_group } = req.body;
+    const { participantIds, participant_ids, name, description, isGroup: explicitIsGroup } = req.body;
 
-    if (!participant_ids || !Array.isArray(participant_ids) || participant_ids.length === 0) {
-      res.status(400).json({ success: false, error: 'participant_ids required' } as ApiResponse);
+    const pIds = participantIds || participant_ids;
+
+    if (!pIds || !Array.isArray(pIds) || pIds.length === 0) {
+      res.status(400).json({ success: false, error: 'participantIds required' } as ApiResponse);
       return;
     }
 
+    const isGroup = pIds.length > 1 || explicitIsGroup === true;
+
     // Include the creator in the participants
-    const allParticipants: string[] = Array.from(new Set([userId, ...participant_ids]));
+    const allParticipants: string[] = Array.from(new Set([userId, ...pIds]));
 
     // For 1-on-1 chats, check if room already exists and enforce size
-    if (!is_group) {
+    if (!isGroup) {
       if (allParticipants.length !== 2) {
         res.status(400).json({ success: false, error: 'Direct chat must have exactly 2 participants' } as ApiResponse);
         return;
@@ -134,7 +138,7 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
             .from('chat_participants')
             .select('chat_id')
             .eq('chat_id', part.chat_id)
-            .eq('user_id', participant_ids[0]);
+            .eq('user_id', pIds[0]);
 
           if (otherPart && otherPart.length > 0) {
             // Check it's not a group chat
@@ -163,20 +167,15 @@ router.post('/create', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    // Validate group size
-    if (is_group && allParticipants.length < 3) {
-      res.status(400).json({ success: false, error: 'Group chat must have at least 3 participants' } as ApiResponse);
-      return;
-    }
-
     // Create the room
     const { data: room, error: roomErr } = await supabaseAdmin
       .from('chat_rooms')
       .insert({
-        name: name || (is_group ? 'New Group' : null),
-        is_group: is_group || false,
+        name: isGroup ? name : null,
+        is_group: isGroup,
         created_by: userId,
       })
+
       .select()
       .single();
 

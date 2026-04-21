@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   // ✅ URL-DRIVEN: roomId is the single source of truth — no setActiveRoomId
   const { rooms, fetchRooms, isLoadingRooms } = useChat();
-  const { onlineUserIds } = useWebSocket();
+  const { onlineUsers } = useWebSocket();
   const [showModal, setShowModal] = useState(false);
   const router = useRouter();
   const params = useParams();
@@ -30,7 +30,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         <div style={{ width: '320px', position: 'relative' }}>
           <ChatSidebar 
             rooms={rooms ?? []}
-            onlineUserIds={onlineUserIds}
+            onlineUsers={onlineUsers}
             activeRoomId={roomId ?? null}
             onNewChat={() => setShowModal(true)}
           />
@@ -56,6 +56,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         {showModal && (
           <CreateChatModal 
             onClose={() => setShowModal(false)}
+            existingRooms={rooms}
             onChatCreated={(newId) => {
               fetchRooms();
               router.push(`/chat/${newId}`);

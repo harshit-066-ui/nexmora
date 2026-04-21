@@ -30,3 +30,8 @@ USING (auth.uid() = id);
 -- id: uuid (primary key, references auth.users)
 -- username: text
 -- avatar_url: text (optional)
+
+-- 6. Enable Realtime for chat_messages
+-- Required for instantaneous UI sync mapping in frontend
+alter table "public"."chat_messages" replica identity full;
+alter publication supabase_realtime add table "public"."chat_messages";

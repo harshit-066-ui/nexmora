@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.3",
     "clsx": "^2.1.1",
+    "cross-env": "^10.1.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",

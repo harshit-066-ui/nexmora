@@ -9,12 +9,12 @@ import { safeArray } from '@/lib/utils';
 
 interface ChatSidebarProps {
   rooms: NormalizedRoom[];
-  onlineUserIds: string[];
+  onlineUsers: Set<string>;
   activeRoomId?: string | null;
   onNewChat: () => void;
 }
 
-export default function ChatSidebar({ rooms, onlineUserIds, activeRoomId, onNewChat }: ChatSidebarProps) {
+export default function ChatSidebar({ rooms, onlineUsers, activeRoomId, onNewChat }: ChatSidebarProps) {
   const { profile, signOut } = useAuth();
   const router = useRouter();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -31,8 +31,11 @@ export default function ChatSidebar({ rooms, onlineUserIds, activeRoomId, onNewC
   const isUserOnline = (room: NormalizedRoom) => {
     if (room.is_group) return false;
     const currentUserId = profile?.id;
-    const otherParticipant = safeArray<any>(room.participants).find(p => p.id !== currentUserId);
-    return otherParticipant ? onlineUserIds.includes(otherParticipant.id) : false;
+    const otherParticipant = (room.participants ?? []).find(p => {
+        const pid = p.user_id ?? p.id;
+        return pid !== currentUserId;
+    });
+    return otherParticipant ? onlineUsers.has(otherParticipant.user_id ?? otherParticipant.id) : false;
   };
 
   return (

@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, User as UserIcon, Loader2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { NormalizedMessage } from '@/hooks/useChat';
-import { useAuth } from '@/hooks/useAuth';
-import { format } from 'date-fns';
+import ChatHeader from './ChatHeader';
+import MessageItem from './MessageItem';
+import { useParams } from 'next/navigation';
 
 interface ChatWindowProps {
   messages: NormalizedMessage[];
   onSendMessage: (content: string) => void;
-  onEditMessage?: (messageId: string, content: string) => void;
-  onDeleteMessage?: (messageId: string) => void;
+  onDeleteMessage: (id: string) => void;
+  onUpdateMessage: (id: string, content: string) => void;
+  onDeleteChat: (id: string) => void;
   isSending: boolean;
   activeRoomName: string;
   isOnline?: boolean;
@@ -18,21 +20,26 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ 
   messages, 
-  onSendMessage, 
+  onSendMessage,
+  onDeleteMessage,
+  onUpdateMessage,
+  onDeleteChat,
   isSending, 
   activeRoomName,
   isOnline = false
 }: ChatWindowProps) {
-  const { profile } = useAuth();
+  const params = useParams();
+  const roomId = params?.roomId as string;
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = useCallback((smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   }, []);
 
+  // ✅ Auto scroll on new messages
   useEffect(() => {
-    scrollToBottom();
+    scrollToBottom(true);
   }, [messages, scrollToBottom]);
 
   const handleSend = (e?: React.FormEvent) => {
@@ -51,112 +58,55 @@ export default function ChatWindow({
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-      {/* Room Header */}
-      <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--background)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ position: 'relative', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <UserIcon size={20} color="var(--muted)" />
-          {isOnline && (
-            <div style={{
-              position: 'absolute',
-              bottom: '0',
-              right: '0',
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#10b981',
-              borderRadius: '50%',
-              border: '2px solid var(--background)'
-            }} />
-          )}
-        </div>
-        <div>
-          <h3 style={{ fontSize: '1rem', margin: 0 }}>{activeRoomName}</h3>
-          <p style={{ fontSize: '0.75rem', margin: 0, color: isOnline ? 'var(--success)' : 'var(--muted)' }}>
-            {isOnline ? 'Online' : 'Offline'}
-          </p>
-        </div>
-      </div>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+      {/* ✅ Modular Header */}
+      <ChatHeader 
+        roomId={roomId} 
+        roomName={activeRoomName} 
+        isOnline={isOnline} 
+        onDelete={onDeleteChat}
+      />
 
       {/* Messages Area */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {!messages?.length ? (
           <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--muted)' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗨️</div>
-            <p>No messages here yet.</p>
-            <p style={{ fontSize: '0.875rem' }}>Start the conversation!</p>
+            <p className="text-gray-200">No messages here yet.</p>
+            <p className="text-gray-400" style={{ fontSize: '0.875rem' }}>Start the conversation!</p>
           </div>
         ) : (
-          messages.map((msg, idx) => {
-            const isMe = msg?.sender_id === profile?.id;
-            const prevMsg = idx > 0 ? messages[idx - 1] : null;
-            const showSender = !isMe && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
-
-            return (
-              <div 
-                key={msg?.id || idx} 
-                style={{ 
-                  alignSelf: isMe ? 'flex-end' : 'flex-start',
-                  maxWidth: '75%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px'
-                }}
-              >
-                {showSender && (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600', marginLeft: '0.5rem', marginBottom: '2px' }}>
-                    {msg?.sender?.username ?? 'Unknown'}
-                  </span>
-                )}
-                <div style={{ 
-                  padding: '0.625rem 1rem',
-                  borderRadius: isMe ? '1rem 1rem 0.25rem 1rem' : '1rem 1rem 1rem 0.25rem',
-                  backgroundColor: isMe ? 'var(--primary)' : 'var(--card)',
-                  color: isMe ? 'white' : 'inherit',
-                  position: 'relative',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  opacity: msg.is_deleted ? 0.6 : 1,
-                  fontStyle: msg.is_deleted ? 'italic' : 'normal'
-                }}>
-                  <p style={{ margin: 0, fontSize: '0.9375rem', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                    {msg.is_deleted ? '[deleted]' : (msg.content ?? '')}
-                  </p>
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'flex-end', 
-                    alignItems: 'center', 
-                    gap: '4px', 
-                    marginTop: '2px',
-                    fontSize: '0.625rem',
-                    opacity: 0.7
-                  }}>
-                    <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
-                    {msg.is_edited && !msg.is_deleted && <span>| edited</span>}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          messages.map((msg, idx) => (
+            <MessageItem 
+                key={msg.id || idx} 
+                message={msg} 
+                onDelete={onDeleteMessage}
+                onUpdate={onUpdateMessage}
+            />
+          ))
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} style={{ height: '1px' }} />
       </div>
 
       {/* Input Area */}
       <div style={{ padding: '1.25rem', backgroundColor: 'var(--background)', borderTop: '1px solid var(--border)' }}>
-        <form onSubmit={handleSend} style={{ display: 'flex', gap: '0.75rem', maxWidth: '900px', margin: '0 auto' }}>
+        <form onSubmit={handleSend} style={{ display: 'flex', gap: '0.75rem', maxWidth: '1000px', margin: '0 auto' }}>
           <input 
             type="text" 
             placeholder="Type your message..." 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            className="chat-input"
             style={{ 
               flex: 1, 
-              backgroundColor: 'rgba(255,255,255,0.04)',
+              backgroundColor: 'rgba(255,255,255,0.05)',
               border: '1px solid var(--border)',
               borderRadius: '0.75rem',
               padding: '0.75rem 1rem',
               outline: 'none',
-              fontSize: '0.9375rem'
+              fontSize: '0.9375rem',
+              color: 'white'
             }}
           />
           <button 
@@ -180,6 +130,12 @@ export default function ChatWindow({
           </button>
         </form>
       </div>
+
+      <style jsx>{`
+        .chat-input::placeholder {
+          color: #9ca3af;
+        }
+      `}</style>
     </div>
   );
 }

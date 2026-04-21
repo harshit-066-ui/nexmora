@@ -13,7 +13,9 @@ const sharedHandlers: Map<string, Set<(payload: any) => void>> = new Map();
 export function useWebSocket() {
   const { session } = useAuth();
   const [isConnected, setIsConnected] = useState(!!sharedSocket && sharedSocket.readyState === WebSocket.OPEN);
-  const [onlineUserIds, setOnlineUserIds] = useState<string[]>(Array.from(sharedOnlineUsers));
+  
+  // ✅ Single source of truth for presence
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set(sharedOnlineUsers));
   
   const accessToken = session?.access_token;
   const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,7 +45,7 @@ export function useWebSocket() {
 
         if (type === 'presence') {
           sharedOnlineUsers = new Set(payload.onlineUsers);
-          setOnlineUserIds(Array.from(sharedOnlineUsers));
+          setOnlineUsers(new Set(sharedOnlineUsers));
           return;
         }
 
@@ -79,8 +81,6 @@ export function useWebSocket() {
   useEffect(() => {
     connect();
     return () => {
-      // We don't necessarily want to close the shared socket on unmount 
-      // if other components are still using it, but here we just cleanup timeouts.
       if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
     };
   }, [connect]);
@@ -104,7 +104,7 @@ export function useWebSocket() {
 
   return {
     isConnected,
-    onlineUserIds,
+    onlineUsers, // ✅ Export Set
     subscribe,
     sendMessage
   };
